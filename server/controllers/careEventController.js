@@ -1,0 +1,69 @@
+const CareEvent = require("../models/CareEvent");
+
+const createCareEvent = async (req, res) => {
+  try {
+    const {
+      patientId,
+      type,
+      title,
+      description,
+      department,
+      createdBy,
+    } = req.body;
+
+    if (!patientId || !type || !title) {
+      return res.status(400).json({
+        success: false,
+        message: "patientId, type and title are required",
+      });
+    }
+
+    const event = await CareEvent.create({
+      patientId,
+      type,
+      title,
+      description,
+      department,
+      createdBy,
+      fileName: req.file ? req.file.originalname : "",
+      fileUrl: req.file
+        ? `/uploads/${req.file.filename}`
+        : "",
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Care record added successfully",
+      event,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const getPatientTimeline = async (req, res) => {
+  try {
+    const events = await CareEvent.find({
+      patientId: req.params.patientId,
+    }).sort({ timestamp: -1 });
+
+    res.json({
+      success: true,
+      count: events.length,
+      timeline: events,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+module.exports = {
+  createCareEvent,
+  getPatientTimeline,
+};

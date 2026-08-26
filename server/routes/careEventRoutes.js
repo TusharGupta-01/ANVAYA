@@ -1,0 +1,37 @@
+const express = require("express");
+const multer = require("multer");
+
+const {
+  createCareEvent,
+  getPatientTimeline,
+} = require("../controllers/careEventController");
+
+const router = express.Router();
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
+
+  filename: (req, file, cb) => {
+    const uniqueName =
+      Date.now() + "-" + file.originalname.replace(/\s+/g, "-");
+
+    cb(null, uniqueName);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+  },
+});
+
+// Add care record + optional file
+router.post("/", upload.single("file"), createCareEvent);
+
+// Get patient's complete care journey
+router.get("/patient/:patientId", getPatientTimeline);
+
+module.exports = router;
