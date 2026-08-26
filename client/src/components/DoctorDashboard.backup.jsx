@@ -1,4 +1,3 @@
-import ABHAVerification from "./ABHAVerification";
 import { useEffect, useState } from "react";
 import {
   Search,
@@ -25,7 +24,7 @@ function DoctorDashboard({ onBack }) {
   const [timeline, setTimeline] = useState([]);
   const [loading, setLoading] = useState(false);
   const [consent, setConsent] = useState(null);
-  const [abhaVerified, setAbhaVerified] = useState(false);
+
   // LIVE HOSPITAL STATUS
   const [hospitalStatus, setHospitalStatus] = useState([]);
   const [statusLoading, setStatusLoading] = useState(true);
@@ -71,7 +70,6 @@ function DoctorDashboard({ onBack }) {
 
   const openPatient = async (patient) => {
     setSelectedPatient(patient);
-    setAbhaVerified(false);
     setLoading(true);
 
     try {
@@ -119,7 +117,9 @@ function DoctorDashboard({ onBack }) {
             </div>
 
             <div>
-              <h1 className="text-xl font-extrabold text-slate-900">ANVAYA</h1>
+              <h1 className="text-xl font-extrabold text-slate-900">
+                ANVAYA
+              </h1>
 
               <p className="text-xs text-slate-500">
                 Connected Digital Healthcare
@@ -294,7 +294,8 @@ function DoctorDashboard({ onBack }) {
           {/* UPDATED TIME */}
           {statusUpdatedAt && (
             <div className="border-t border-slate-100 px-5 py-3 text-right text-[10px] text-slate-400 sm:px-6">
-              Last updated {new Date(statusUpdatedAt).toLocaleTimeString()}
+              Last updated{" "}
+              {new Date(statusUpdatedAt).toLocaleTimeString()}
               {" • "}Auto-refresh every 30 sec
             </div>
           )}
@@ -373,7 +374,10 @@ function DoctorDashboard({ onBack }) {
 
                 {filteredPatients.length === 0 && (
                   <div className="px-6 py-12 text-center">
-                    <UserRound size={35} className="mx-auto text-slate-300" />
+                    <UserRound
+                      size={35}
+                      className="mx-auto text-slate-300"
+                    />
 
                     <p className="mt-3 font-semibold text-slate-600">
                       No patient found
@@ -396,18 +400,13 @@ function DoctorDashboard({ onBack }) {
                 setSelectedPatient(null);
                 setTimeline([]);
                 setConsent(null);
-                setAbhaVerified(false);
               }}
               className="mb-5 flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-600"
             >
               <ArrowLeft size={17} />
               Back to Patients
             </button>
-            {/* ABHA VERIFICATION */}
-            <ABHAVerification
-              patient={selectedPatient}
-              onVerified={() => setAbhaVerified(true)}
-            />
+
             {/* CONSENT STATUS */}
             <div
               className={`mb-4 flex items-center gap-2 rounded-xl px-4 py-3 text-xs font-bold ${
@@ -459,7 +458,6 @@ function DoctorDashboard({ onBack }) {
             </div>
 
             {/* CARE JOURNEY */}
-            {abhaVerified && (
             <div className="mt-5 rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="flex items-center justify-between border-b border-slate-100 px-5 py-5 sm:px-6">
                 <div>
@@ -485,10 +483,7 @@ function DoctorDashboard({ onBack }) {
               ) : (
                 <div className="divide-y divide-slate-100">
                   {timeline.map((event) => (
-                    <div
-                      key={event._id}
-                      className="flex gap-4 px-5 py-5 sm:px-6"
-                    >
+                    <div key={event._id} className="flex gap-4 px-5 py-5 sm:px-6">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                         {event.type === "Consultation" ? (
                           <Stethoscope size={19} />
@@ -511,7 +506,9 @@ function DoctorDashboard({ onBack }) {
 
                           <div className="flex items-center gap-1 text-xs text-slate-400">
                             <Clock3 size={13} />
-                            {new Date(event.timestamp).toLocaleDateString()}
+                            {new Date(
+                              event.timestamp,
+                            ).toLocaleDateString()}
                           </div>
                         </div>
 
@@ -531,7 +528,10 @@ function DoctorDashboard({ onBack }) {
                           {event.fileName && event.fileUrl && (
                             <button
                               onClick={() =>
-                                window.open(`${API}${event.fileUrl}`, "_blank")
+                                window.open(
+                                  `${API}${event.fileUrl}`,
+                                  "_blank",
+                                )
                               }
                               className="rounded-md bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-600 transition hover:bg-emerald-100"
                             >
@@ -551,7 +551,6 @@ function DoctorDashboard({ onBack }) {
                 </div>
               )}
             </div>
-            )}
           </div>
         )}
       </main>
