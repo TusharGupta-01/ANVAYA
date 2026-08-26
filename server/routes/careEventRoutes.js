@@ -4,6 +4,7 @@ const multer = require("multer");
 const {
   createCareEvent,
   getPatientTimeline,
+  getDoctorPatientTimeline,
 } = require("../controllers/careEventController");
 
 const router = express.Router();
@@ -33,5 +34,10 @@ router.post("/", upload.single("file"), createCareEvent);
 
 // Get patient's complete care journey
 router.get("/patient/:patientId", getPatientTimeline);
+
+router.get(
+  "/doctor/:patientId",
+  getDoctorPatientTimeline,
+);
 
 module.exports = router;

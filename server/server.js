@@ -19,6 +19,8 @@ app.use(express.json());
 
 app.use("/uploads", express.static("uploads"));
 app.use("/api/consent", consentRoutes);
+app.locals.consentStore = consentRoutes.consentStore;
+
 app.use("/api/hospital-status", hospitalStatusRoutes);
 
 app.get("/", (req, res) => {

@@ -38,4 +38,7 @@ router.post("/:patientId", (req, res) => {
   });
 });
 
+// Make the SAME consent store available to other backend modules
+router.consentStore = consentStore;
+
 module.exports = router;

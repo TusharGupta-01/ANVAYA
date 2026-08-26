@@ -63,7 +63,41 @@ const getPatientTimeline = async (req, res) => {
   }
 };
 
+const getDoctorPatientTimeline = async (req, res) => {
+  try {
+    const patientId = req.params.patientId;
+
+    // MVP consent check
+    const consentStore = req.app.locals.consentStore;
+
+    const consent = consentStore?.get(patientId);
+
+    if (!consent?.granted) {
+      return res.status(403).json({
+        success: false,
+        message: "Patient consent is required to access clinical records",
+        code: "CONSENT_REQUIRED",
+      });
+    }
+
+    const events = await CareEvent.find({
+      patientId,
+    }).sort({ timestamp: -1 });
+
+    res.json({
+      success: true,
+      count: events.length,
+      timeline: events,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 module.exports = {
   createCareEvent,
   getPatientTimeline,
+  getDoctorPatientTimeline,
 };
