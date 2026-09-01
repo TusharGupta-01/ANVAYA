@@ -1,15 +1,14 @@
 const CareEvent = require("../models/CareEvent");
-
+const consentRoutes = require("../routes/consentRoutes");
 const createCareEvent = async (req, res) => {
   try {
     const {
-      patientId,
-      type,
-      title,
-      description,
-      department,
-      createdBy,
-    } = req.body;
+  patientId,
+  type,
+  title,
+  description,
+  department,
+} = req.body || {};
 
     if (!patientId || !type || !title) {
       return res.status(400).json({
@@ -18,17 +17,23 @@ const createCareEvent = async (req, res) => {
       });
     }
 
+    if (!req.rolePermissions.allowedTypes.includes(type)) {
+  return res.status(403).json({
+    success: false,
+    message: `${req.rolePermissions.label} cannot create a ${type} record`,
+    code: "ROLE_NOT_ALLOWED",
+  });
+}
+
     const event = await CareEvent.create({
       patientId,
       type,
       title,
       description,
       department,
-      createdBy,
+      createdBy: req.rolePermissions.label,
       fileName: req.file ? req.file.originalname : "",
-      fileUrl: req.file
-        ? `/uploads/${req.file.filename}`
-        : "",
+      fileUrl: req.file ? `/uploads/${req.file.filename}` : "",
     });
 
     res.status(201).json({
@@ -68,10 +73,9 @@ const getDoctorPatientTimeline = async (req, res) => {
     const patientId = req.params.patientId;
 
     // MVP consent check
-    const consentStore = req.app.locals.consentStore;
+    const consentStore = consentRoutes.consentStore;
 
     const consent = consentStore?.get(patientId);
-
     if (!consent?.granted) {
       return res.status(403).json({
         success: false,

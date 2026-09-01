@@ -7,6 +7,8 @@ const {
   getDoctorPatientTimeline,
 } = require("../controllers/careEventController");
 
+const { roleAccess } = require("../middleware/roleAccess");
+
 const router = express.Router();
 
 const storage = multer.diskStorage({
@@ -30,7 +32,12 @@ const upload = multer({
 });
 
 // Add care record + optional file
-router.post("/", upload.single("file"), createCareEvent);
+router.post(
+  "/",
+  roleAccess,
+  upload.single("file"),
+  createCareEvent
+);
 
 // Get patient's complete care journey
 router.get("/patient/:patientId", getPatientTimeline);

@@ -4,15 +4,20 @@ import {
   FileText,
   HeartPulse,
   Clock3,
-  Upload,
   UserRound,
   Stethoscope,
   ChevronRight,
   CheckCircle2,
+  X,
+  Paperclip,
 } from "lucide-react";
 
 import "./index.css";
 import DoctorDashboard from "./components/DoctorDashboard";
+import HospitalDashboard from "./components/HospitalDashboard";
+import LabStaffDashboard from "./components/LabStaffDashboard";
+import NurseDashboard from "./components/NurseDashboard";
+
 const API = "http://localhost:5000";
 const patientId = "ANV-P001";
 
@@ -21,9 +26,8 @@ function App() {
   const [timeline, setTimeline] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [showUpload, setShowUpload] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [view, setView] = useState("patient");
+  // const [view, setView] = useState("hospital");
   const [form, setForm] = useState({
     type: "Lab Report",
     title: "",
@@ -34,27 +38,59 @@ function App() {
   });
   const [consent, setConsent] = useState(null);
   const [consentLoading, setConsentLoading] = useState(false);
+  const [showAllRecords, setShowAllRecords] = useState(false);
 
   const loadData = async () => {
     try {
+      // 1. Load patient identity first
       const patientRes = await fetch(`${API}/api/patients/${patientId}`);
+
+      if (!patientRes.ok) {
+        throw new Error("Failed to load patient information");
+      }
 
       const patientData = await patientRes.json();
 
-      const timelineRes = await fetch(
-        `${API}/api/care-events/patient/${patientId}`,
-      );
-      const consentRes = await fetch(`${API}/api/consent/${patientId}`);
-
-      const consentData = await consentRes.json();
-
-      setConsent(consentData.consent);
-      const timelineData = await timelineRes.json();
-
+      // Patient information should never depend on consent or
+      // care-record loading.
       setPatient(patientData.patient);
-      setTimeline(timelineData.timeline || []);
+
+      // 2. Load consent separately
+      try {
+        const consentRes = await fetch(`${API}/api/consent/${patientId}`);
+
+        if (consentRes.ok) {
+          const consentData = await consentRes.json();
+          setConsent(consentData.consent);
+        }
+      } catch (error) {
+        console.error("Consent loading failed:", error);
+      }
+
+      // 3. Load patient's own care records separately
+      try {
+        const timelineRes = await fetch(
+          `${API}/api/care-events/patient/${patientId}`,
+        );
+
+        if (!timelineRes.ok) {
+          throw new Error("Failed to load patient care records");
+        }
+
+        const timelineData = await timelineRes.json();
+
+        setTimeline(timelineData.timeline || []);
+      } catch (error) {
+        console.error("Care records loading failed:", error);
+
+        // Do not destroy patient information if records fail.
+        setTimeline([]);
+      }
     } catch (error) {
-      console.error(error);
+      console.error("Patient loading failed:", error);
+
+      // Keep the UI from showing fake/undefined patient information.
+      setPatient(null);
     } finally {
       setLoading(false);
     }
@@ -75,6 +111,7 @@ function App() {
 
       if (data.success) {
         setConsent(data.consent);
+        await loadData();
       }
     } catch (error) {
       console.error("Consent update failed:", error);
@@ -82,66 +119,42 @@ function App() {
       setConsentLoading(false);
     }
   };
-  const handleUpload = async (e) => {
-    e.preventDefault();
-
-    if (!form.title || !form.file) {
-      alert("Please enter a title and select a file.");
-      return;
-    }
-
-    try {
-      setUploading(true);
-
-      const formData = new FormData();
-
-      formData.append("patientId", patientId);
-      formData.append("type", form.type);
-      formData.append("title", form.title);
-      formData.append("description", form.description);
-      formData.append("department", form.department);
-      formData.append("createdBy", form.createdBy);
-      formData.append("file", form.file);
-
-      const response = await fetch(`${API}/api/care-events`, {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.message || "Upload failed");
-      }
-
-      alert("Health record uploaded successfully!");
-
-      setForm({
-        type: "Lab Report",
-        title: "",
-        description: "",
-        department: "Cardiology",
-        createdBy: "Dr. Sharma",
-        file: null,
-      });
-
-      setShowUpload(false);
-
-      await loadData();
-    } catch (error) {
-      console.error(error);
-      alert("Upload failed. Please try again.");
-    } finally {
-      setUploading(false);
-    }
-  };
 
   useEffect(() => {
     loadData();
   }, []);
-  if (view === "doctor") {
-    return <DoctorDashboard onBack={() => setView("patient")} />;
+  if (view === "hospital") {
+    return (
+      <HospitalDashboard
+        onBack={() => setView("patient")}
+        onSwitchRole={setView}
+      />
+    );
   }
+  if (view === "doctor") {
+    return (
+      <DoctorDashboard
+        onBack={() => setView("patient")}
+        onSwitchRole={setView}
+      />
+    );
+  }
+  if (view === "lab_staff") {
+  return (
+    <LabStaffDashboard
+      onBack={() => setView("patient")}
+      onSwitchRole={setView}
+    />
+  );
+}
+if (view === "nurse") {
+  return (
+    <NurseDashboard
+      onBack={() => setView("patient")}
+      onSwitchRole={setView}
+    />
+  );
+}
   if (loading) {
     return (
       <div className="loading">
@@ -168,12 +181,24 @@ function App() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setView("doctor")}
-              className="rounded-full bg-blue-50 px-4 py-2 text-xs font-bold text-blue-600 transition hover:bg-blue-100"
-            >
-              Doctor Portal
-            </button>
+            <div className="relative">
+              <select
+                value="patient"
+                onChange={(e) => setView(e.target.value)}
+                className="appearance-none rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 pr-9 text-xs font-bold text-blue-700 outline-none cursor-pointer"
+              >
+                <option value="patient">Patient View</option>
+                <option value="doctor">Doctor Portal</option>
+                <option value="lab_staff">Lab Staff</option>
+                <option value="nurse">Nursing Workspace</option>
+                <option value="receptionist">Reception Workspace</option>
+                <option value="hospital">Hospital Operations</option>
+              </select>
+
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-blue-600">
+                ▾
+              </span>
+            </div>
 
             <div className="avatar">
               <UserRound size={18} />
@@ -193,33 +218,120 @@ function App() {
           <p>Your healthcare information, connected in one place.</p>
         </section>
 
-        {/* PATIENT SUMMARY */}
-        <section className="summary-grid">
-          <SummaryCard
-            icon={<UserRound />}
-            label="Patient ID"
-            value={patient?.patientId}
-          />
+        {/* HEALTH SNAPSHOT */}
+        <section className="health-snapshot">
+          <div className="snapshot-heading">
+            <div>
+              <div className="eyebrow">HEALTH SNAPSHOT</div>
 
-          <SummaryCard
-            icon={<Activity />}
-            label="Age"
-            value={`${patient?.age} years`}
-          />
+              <h2>Your care at a glance</h2>
 
-          <SummaryCard
-            icon={<HeartPulse />}
-            label="Blood Group"
-            value={patient?.bloodGroup}
-          />
+              <p>
+                Important health information and recent activity from your
+                connected care journey.
+              </p>
+            </div>
 
-          <SummaryCard
-            icon={<FileText />}
-            label="Care Records"
-            value={timeline.length}
-          />
+            <div className="snapshot-status">
+              <CheckCircle2 size={16} />
+              Records Connected
+            </div>
+          </div>
+
+          <div className="snapshot-grid">
+            {/* ALLERGIES */}
+            <div className="snapshot-card allergy-card">
+              <div className="snapshot-card-top">
+                <div className="snapshot-icon">⚠️</div>
+
+                <div>
+                  <div className="snapshot-label">ALLERGIES</div>
+                  <div className="snapshot-meta">
+                    {patient?.allergies?.length || 0} recorded
+                  </div>
+                </div>
+              </div>
+
+              <div className="snapshot-value">
+                {patient?.allergies?.length > 0
+                  ? patient.allergies.slice(0, 2).join(", ")
+                  : "No known allergies"}
+              </div>
+
+              {patient?.allergies?.length > 2 && (
+                <div className="snapshot-note">
+                  +{patient.allergies.length - 2} more
+                </div>
+              )}
+            </div>
+
+            {/* MEDICATIONS */}
+            <div className="snapshot-card medication-card">
+              <div className="snapshot-card-top">
+                <div className="snapshot-icon">💊</div>
+
+                <div>
+                  <div className="snapshot-label">CURRENT MEDICATION</div>
+                  <div className="snapshot-meta">
+                    {patient?.currentMedications?.length || 0} active
+                  </div>
+                </div>
+              </div>
+
+              <div className="snapshot-value">
+                {patient?.currentMedications?.length > 0
+                  ? patient.currentMedications[0].name
+                  : "No active medication"}
+              </div>
+
+              {patient?.currentMedications?.length > 1 && (
+                <div className="snapshot-note">
+                  +{patient.currentMedications.length - 1} more medications
+                </div>
+              )}
+            </div>
+
+            {/* VACCINATIONS */}
+            <div className="snapshot-card vaccination-card">
+              <div className="snapshot-card-top">
+                <div className="snapshot-icon">💉</div>
+
+                <div>
+                  <div className="snapshot-label">VACCINATIONS</div>
+                  <div className="snapshot-meta">
+                    {patient?.vaccinations?.length || 0} recorded
+                  </div>
+                </div>
+              </div>
+
+              <div className="snapshot-value">
+                {patient?.vaccinations?.length > 0
+                  ? `${patient.vaccinations.length} immunizations`
+                  : "No records available"}
+              </div>
+
+              <div className="snapshot-note">Immunization history</div>
+            </div>
+
+            {/* CARE RECORDS */}
+            <div className="snapshot-card records-card">
+              <div className="snapshot-card-top">
+                <div className="snapshot-icon">
+                  <FileText size={19} />
+                </div>
+
+                <div>
+                  <div className="snapshot-label">CARE RECORDS</div>
+                  <div className="snapshot-meta">Connected history</div>
+                </div>
+              </div>
+
+              <div className="snapshot-value">{timeline.length} records</div>
+
+              <div className="snapshot-note">Across your care journey</div>
+            </div>
+          </div>
         </section>
-
         {/* MAIN GRID */}
         <div className="content-grid">
           {/* CARE JOURNEY */}
@@ -257,19 +369,12 @@ function App() {
               <p className="muted">Manage your connected health records</p>
 
               <button
-                className="upload-button"
-                onClick={() => setShowUpload(true)}
+                className="secondary-button"
+                onClick={() => setShowAllRecords(true)}
               >
-                <Upload size={19} />
-
-                <span>Upload Health Record</span>
-
-                <ChevronRight size={18} />
-              </button>
-
-              <button className="secondary-button">
                 <FileText size={18} />
                 View All Records
+                <ChevronRight size={16} />
               </button>
             </div>
             {/*consent*/}
@@ -346,123 +451,110 @@ function App() {
           </aside>
         </div>
       </main>
-      {showUpload && (
-        <div className="modal-overlay">
-          <div className="upload-modal">
-            <div className="modal-header">
+      {showAllRecords && (
+        <div className="records-modal-overlay">
+          <div className="records-modal">
+            {/* HEADER */}
+            <div className="records-modal-header">
               <div>
-                <h2>Upload at Point of Care</h2>
+                <div className="eyebrow">CONNECTED RECORDS</div>
 
-                <p>Capture this care event while it happens.</p>
+                <h2>All Health Records</h2>
+
+                <p>
+                  {patient?.name} · {patient?.patientId}
+                </p>
               </div>
 
               <button
-                className="close-button"
-                onClick={() => setShowUpload(false)}
+                className="records-close"
+                onClick={() => setShowAllRecords(false)}
+                aria-label="Close records"
               >
-                ×
+                <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleUpload}>
-              <label>Record Type</label>
-
-              <select
-                value={form.type}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    type: e.target.value,
-                  })
-                }
-              >
-                <option>Lab Report</option>
-                <option>ECG Report</option>
-                <option>Prescription</option>
-                <option>Consultation</option>
-                <option>Discharge Summary</option>
-                <option>Other</option>
-              </select>
-
-              <label>Record Title</label>
-
-              <input
-                type="text"
-                placeholder="e.g. ECG Report"
-                value={form.title}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    title: e.target.value,
-                  })
-                }
-              />
-
-              <label>Department</label>
-
-              <select
-                value={form.department}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    department: e.target.value,
-                  })
-                }
-              >
-                <option>Cardiology</option>
-                <option>Pathology</option>
-                <option>General Medicine</option>
-                <option>Emergency</option>
-                <option>Radiology</option>
-                <option>Orthopedics</option>
-              </select>
-
-              <label>Description</label>
-
-              <textarea
-                placeholder="Briefly describe this care event..."
-                value={form.description}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    description: e.target.value,
-                  })
-                }
-              />
-
-              <label>Attach Medical Record</label>
-
-              <div className="file-box">
-                <Upload size={22} />
-
-                <div>
-                  <strong>
-                    {form.file ? form.file.name : "Choose medical record"}
-                  </strong>
-
-                  <span>PDF, JPG or PNG</span>
-                </div>
-
-                <input
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      file: e.target.files[0],
-                    })
-                  }
-                />
+            {/* SUMMARY */}
+            <div className="records-summary">
+              <div>
+                <strong>{timeline.length}</strong>
+                <span>connected records</span>
               </div>
 
-              <button
-                className="submit-upload"
-                type="submit"
-                disabled={uploading}
-              >
-                {uploading ? "Uploading..." : "Save Health Record"}
-              </button>
-            </form>
+              <div className="records-summary-status">
+                <CheckCircle2 size={15} />
+                Connected care history
+              </div>
+            </div>
+
+            {/* RECORD LIST */}
+            <div className="records-list">
+              {timeline.length === 0 ? (
+                <div className="records-empty">
+                  <FileText size={24} />
+                  <h3>No health records yet</h3>
+                  <p>
+                    Connected care records will appear here when they are added.
+                  </p>
+                </div>
+              ) : (
+                timeline.map((event, index) => (
+                  <div className="all-record-item" key={event._id}>
+                    <div className="all-record-icon">
+                      {event.type === "Consultation" ? (
+                        <Stethoscope size={18} />
+                      ) : (
+                        <FileText size={18} />
+                      )}
+                    </div>
+
+                    <div className="all-record-main">
+                      <div className="all-record-top">
+                        <div>
+                          <span className="all-record-type">{event.type}</span>
+
+                          <h3>{event.title}</h3>
+
+                          <p>{event.department}</p>
+                        </div>
+
+                        <div className="all-record-date">
+                          <Clock3 size={13} />
+
+                          {new Date(event.timestamp).toLocaleDateString()}
+                        </div>
+                      </div>
+
+                      {event.description && (
+                        <p className="all-record-description">
+                          {event.description}
+                        </p>
+                      )}
+
+                      <div className="all-record-footer">
+                        <span>
+                          Recorded by {event.createdBy || "Healthcare Staff"}
+                        </span>
+
+                        {event.fileName && event.fileUrl && (
+                          <button
+                            onClick={() =>
+                              window.open(`${API}${event.fileUrl}`, "_blank")
+                            }
+                            className="all-record-file"
+                          >
+                            <Paperclip size={13} />
+                            View original record
+                            <ChevronRight size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -524,7 +616,9 @@ function TimelineItem({ event, last }) {
               onClick={() => window.open(`${API}${event.fileUrl}`, "_blank")}
               className="attachment"
             >
-              📎 {event.fileName} →
+              <Paperclip size={14} />
+              {event.fileName}
+              <ChevronRight size={13} />
             </button>
           )}
         </div>

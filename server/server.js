@@ -12,6 +12,11 @@ const hospitalStatusRoutes = require("./routes/hospitalStatusRoutes");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+
+// Shared consent store for the MVP
+app.locals.consentStore = new Map();
+
+
 connectDB();
 
 app.use(cors());

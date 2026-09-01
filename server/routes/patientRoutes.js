@@ -64,4 +64,48 @@ router.post("/", async (req, res) => {
   }
 });
 
+// Update patient clinical snapshot
+router.put("/:patientId/clinical", async (req, res) => {
+  try {
+    const {
+      allergies,
+      currentMedications,
+      vaccinations,
+    } = req.body;
+
+    const patient = await Patient.findOneAndUpdate(
+      { patientId: req.params.patientId },
+      {
+        $set: {
+          allergies: allergies || [],
+          currentMedications: currentMedications || [],
+          vaccinations: vaccinations || [],
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Clinical snapshot updated successfully",
+      patient,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
 module.exports = router;

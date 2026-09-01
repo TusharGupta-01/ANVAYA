@@ -37,6 +37,51 @@ const patientSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+
+    // Clinical snapshot
+    allergies: {
+      type: [String],
+      default: [],
+    },
+
+    currentMedications: {
+      type: [
+        {
+          name: {
+            type: String,
+            required: true,
+          },
+          dosage: {
+            type: String,
+            default: "",
+          },
+          frequency: {
+            type: String,
+            default: "",
+          },
+        },
+      ],
+      default: [],
+    },
+
+    vaccinations: {
+      type: [
+        {
+          name: {
+            type: String,
+            required: true,
+          },
+          date: {
+            type: Date,
+          },
+          status: {
+            type: String,
+            default: "Completed",
+          },
+        },
+      ],
+      default: [],
+    },
   },
   {
     timestamps: true,
